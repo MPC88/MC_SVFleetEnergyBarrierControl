@@ -17,7 +17,7 @@ namespace MC_SVFleetEnergyBarrierControl
     {
         public const string pluginGuid = "mc.starvalor.fleetenergybarriercontrol";
         public const string pluginName = "SV Fleet Energy Barrier Control";
-        public const string pluginVersion = "1.0.0";
+        public const string pluginVersion = "1.0.1";
 
         private const string modSaveFolder = "/MCSVSaveData/";  // /SaveData/ sub folder
         private const string modSaveFilePrefix = "FleeetEBCntrl_"; // modSaveFilePrefixNN.dat
@@ -47,12 +47,14 @@ namespace MC_SVFleetEnergyBarrierControl
         [HarmonyPostfix]
         private static void FBCOpen_Post(FleetBehaviorControl __instance, GameObject ___emergencyWarpGO, AIMercenaryCharacter ___aiMercChar)
         {
-            if (data == null ||
-                data.thresholds.Count != CountPlayerFleetMemebers())
-            {
+            if (data == null)
                 data = new PersistentData();
+
+            if (data.thresholds.Count != CountPlayerFleetMemebers())
+            {                
                 for (int i = 0; i < PChar.Char.mercenaries.Count; i++)
-                    if (PChar.Char.mercenaries[i] is PlayerFleetMember)
+                    if (PChar.Char.mercenaries[i] is PlayerFleetMember &&
+                        !data.thresholds.ContainsKey((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID))
                         data.thresholds.Add((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID, defaultThreshold);
             }
 
