@@ -17,7 +17,7 @@ namespace MC_SVFleetEnergyBarrierControl
     {
         public const string pluginGuid = "mc.starvalor.fleetenergybarriercontrol";
         public const string pluginName = "SV Fleet Energy Barrier Control";
-        public const string pluginVersion = "1.0.1";
+        public const string pluginVersion = "1.0.2";
 
         private const string modSaveFolder = "/MCSVSaveData/";  // /SaveData/ sub folder
         private const string modSaveFilePrefix = "FleeetEBCntrl_"; // modSaveFilePrefixNN.dat
@@ -44,25 +44,14 @@ namespace MC_SVFleetEnergyBarrierControl
 
         #region UI
         [HarmonyPatch(typeof(FleetBehaviorControl), nameof(FleetBehaviorControl.Open))]
-        [HarmonyPostfix]
-        private static void FBCOpen_Post(FleetBehaviorControl __instance, GameObject ___emergencyWarpGO, AIMercenaryCharacter ___aiMercChar)
+        [HarmonyPrefix]
+        private static void FBCOpen_Pre(FleetBehaviorControl __instance, GameObject ___emergencyWarpGO)
         {
-            if (data == null)
-                data = new PersistentData();
-
-            if (data.thresholds.Count != CountPlayerFleetMemebers())
-            {                
-                for (int i = 0; i < PChar.Char.mercenaries.Count; i++)
-                    if (PChar.Char.mercenaries[i] is PlayerFleetMember &&
-                        !data.thresholds.ContainsKey((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID))
-                        data.thresholds.Add((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID, defaultThreshold);
-            }
-
             if (energyBarrierGO == null)
             {
                 energyBarrierGO = Instantiate(___emergencyWarpGO);
                 GameObject text = energyBarrierGO.transform.Find("Text").gameObject;
-                text.GetComponentInChildren<Text>().text = "Activate Energy Barrier when HP below";                
+                text.GetComponentInChildren<Text>().text = "Activate Energy Barrier when HP below";
 
                 energyBarrierDropdown = energyBarrierGO.transform.Find("Dropdown").GetComponent<Dropdown>();
 
@@ -71,7 +60,7 @@ namespace MC_SVFleetEnergyBarrierControl
                 energyBarrierGO.transform.SetParent(___emergencyWarpGO.transform.parent, false);
                 energyBarrierGO.transform.localPosition = new Vector3(
                     ___emergencyWarpGO.transform.localPosition.x,
-                    ___emergencyWarpGO.transform.localPosition.y - 
+                    ___emergencyWarpGO.transform.localPosition.y -
                     text.GetComponent<RectTransform>().rect.height -
                     energyBarrierDropdown.gameObject.GetComponent<RectTransform>().rect.height,
                     ___emergencyWarpGO.transform.localPosition.z);
@@ -98,6 +87,22 @@ namespace MC_SVFleetEnergyBarrierControl
                     btnClose.localPosition.x,
                     btnClose.localPosition.y + diff,
                     btnClose.localPosition.z);
+            }
+        }
+
+        [HarmonyPatch(typeof(FleetBehaviorControl), nameof(FleetBehaviorControl.Open))]
+        [HarmonyPostfix]
+        private static void FBCOpen_Post(AIMercenaryCharacter ___aiMercChar)
+        {
+            if (data == null)
+                data = new PersistentData();
+
+            if (data.thresholds.Count != CountPlayerFleetMemebers())
+            {                
+                for (int i = 0; i < PChar.Char.mercenaries.Count; i++)
+                    if (PChar.Char.mercenaries[i] is PlayerFleetMember &&
+                        !data.thresholds.ContainsKey((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID))
+                        data.thresholds.Add((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID, defaultThreshold);
             }
 
             if (___aiMercChar is PlayerFleetMember &&
