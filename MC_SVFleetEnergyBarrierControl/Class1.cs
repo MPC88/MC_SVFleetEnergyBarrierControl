@@ -49,64 +49,73 @@ namespace MC_SVFleetEnergyBarrierControl
         private static void FBCOpen_Pre(FleetBehaviorControl __instance, GameObject ___emergencyWarpGO)
         {
             if (energyBarrierGO == null)
+                CreateEmergencyWarpGO(__instance, ___emergencyWarpGO);
+        }
+
+        private static bool CreateEmergencyWarpGO(FleetBehaviorControl __instance, GameObject ___emergencyWarpGO)
+        {
+            if (___emergencyWarpGO != null)
+                emergencyWarpGO = Instantiate(___emergencyWarpGO);
+            else
+                return false;
+
+            energyBarrierGO = Instantiate(emergencyWarpGO);
+
+            GameObject text = energyBarrierGO.transform.Find("Text").gameObject;
+            text.GetComponentInChildren<Text>().text = "Activate Energy Barrier when HP below";
+
+            energyBarrierDropdown = energyBarrierGO.transform.Find("Dropdown").GetComponent<Dropdown>();
+
+            energyBarrierGO.transform.Find("Note").GetComponentInChildren<Text>().text = "";
+
+            energyBarrierGO.transform.SetParent(___emergencyWarpGO.transform.parent, false);
+            energyBarrierGO.transform.localPosition = new Vector3(
+                ___emergencyWarpGO.transform.localPosition.x,
+                ___emergencyWarpGO.transform.localPosition.y -
+                text.GetComponent<RectTransform>().rect.height -
+                energyBarrierDropdown.gameObject.GetComponent<RectTransform>().rect.height,
+                ___emergencyWarpGO.transform.localPosition.z);
+            energyBarrierGO.transform.localScale = ___emergencyWarpGO.transform.localScale;
+            energyBarrierGO.layer = ___emergencyWarpGO.layer;
+
+            Transform bg = __instance.transform.Find("BG");
+            bg.localScale = new Vector3(
+                bg.localScale.x,
+                bg.localScale.y + 0.125f,
+                bg.localScale.z);
+            float diff = bg.GetComponent<RectTransform>().rect.yMin * 0.125f;
+
+            for (int i = 1; i < __instance.transform.childCount - 2; i++)
             {
-                if(___emergencyWarpGO != null)
-                    emergencyWarpGO = Instantiate(___emergencyWarpGO);
-                else
-                    return;
-
-                energyBarrierGO = Instantiate(emergencyWarpGO);
-
-                GameObject text = energyBarrierGO.transform.Find("Text").gameObject;
-                text.GetComponentInChildren<Text>().text = "Activate Energy Barrier when HP below";
-
-                energyBarrierDropdown = energyBarrierGO.transform.Find("Dropdown").GetComponent<Dropdown>();
-
-                energyBarrierGO.transform.Find("Note").GetComponentInChildren<Text>().text = "";
-
-                energyBarrierGO.transform.SetParent(___emergencyWarpGO.transform.parent, false);
-                energyBarrierGO.transform.localPosition = new Vector3(
-                    ___emergencyWarpGO.transform.localPosition.x,
-                    ___emergencyWarpGO.transform.localPosition.y -
-                    text.GetComponent<RectTransform>().rect.height -
-                    energyBarrierDropdown.gameObject.GetComponent<RectTransform>().rect.height,
-                    ___emergencyWarpGO.transform.localPosition.z);
-                energyBarrierGO.transform.localScale = ___emergencyWarpGO.transform.localScale;
-                energyBarrierGO.layer = ___emergencyWarpGO.layer;
-
-                Transform bg = __instance.transform.Find("BG");
-                bg.localScale = new Vector3(
-                    bg.localScale.x,
-                    bg.localScale.y + 0.125f,
-                    bg.localScale.z);
-                float diff = bg.GetComponent<RectTransform>().rect.yMin * 0.125f;
-
-                for (int i = 1; i < __instance.transform.childCount - 2; i++)
-                {
-                    Transform child = __instance.transform.GetChild(i);
-                    child.localPosition = new Vector3(
-                        child.localPosition.x,
-                        child.localPosition.y - diff,
-                        child.localPosition.z);
-                }
-                Transform btnClose = __instance.transform.GetChild(__instance.transform.childCount - 2);
-                btnClose.localPosition = new Vector3(
-                    btnClose.localPosition.x,
-                    btnClose.localPosition.y + diff,
-                    btnClose.localPosition.z);
+                Transform child = __instance.transform.GetChild(i);
+                child.localPosition = new Vector3(
+                    child.localPosition.x,
+                    child.localPosition.y - diff,
+                    child.localPosition.z);
             }
+            Transform btnClose = __instance.transform.GetChild(__instance.transform.childCount - 2);
+            btnClose.localPosition = new Vector3(
+                btnClose.localPosition.x,
+                btnClose.localPosition.y + diff,
+                btnClose.localPosition.z);
+
+            return true;
         }
 
         [HarmonyPatch(typeof(FleetBehaviorControl), nameof(FleetBehaviorControl.Open))]
         [HarmonyPostfix]
-        private static void FBCOpen_Post(AIMercenaryCharacter ___aiMercChar)
+        private static void FBCOpen_Post(FleetBehaviorControl __instance, GameObject ___emergencyWarpGO, AIMercenaryCharacter ___aiMercChar)
         {
             if (data == null)
                 data = new PersistentData();
 
             if (energyBarrierGO == null)
-                return;
-
+            {
+                bool created = CreateEmergencyWarpGO(__instance, ___emergencyWarpGO);
+                if (!created)
+                    return;
+            }
+            
             if (data.thresholds.Count != CountPlayerFleetMemebers())
             {                
                 for (int i = 0; i < PChar.Char.mercenaries.Count; i++)
@@ -115,9 +124,18 @@ namespace MC_SVFleetEnergyBarrierControl
                         data.thresholds.Add((PChar.Char.mercenaries[i] as PlayerFleetMember).crewMemberID, defaultThreshold);
             }
 
-            if (___aiMercChar is PlayerFleetMember &&
-                data.thresholds.TryGetValue((___aiMercChar as PlayerFleetMember).crewMemberID, out int curThreshold))
+            if (___aiMercChar != null && ___aiMercChar is PlayerFleetMember)
             {
+                int curThreshold = 0;
+                int crewID = (___aiMercChar as PlayerFleetMember).crewMemberID;
+                bool gotValue = data.thresholds.TryGetValue(crewID, out curThreshold);
+
+                if (!gotValue)
+                {
+                    data.thresholds.Add(crewID, defaultThreshold);
+                    curThreshold = defaultThreshold;
+                }
+
                 Dropdown.DropdownEvent dde = new Dropdown.DropdownEvent();
                 UnityAction<int> ua = null;
                 ua += (int index) => ThresholdChanged(___aiMercChar as PlayerFleetMember);
@@ -134,7 +152,7 @@ namespace MC_SVFleetEnergyBarrierControl
                 energyBarrierGO.transform.Find("Text").GetComponentInChildren<Text>().color = ColorSys.colDarkGray;
                 energyBarrierGO.SetActive(false);
                 energyBarrierDropdown.enabled = false;
-                energyBarrierDropdown.value = defaultThreshold;                
+                energyBarrierDropdown.value = defaultThreshold;
             }
         }
 
