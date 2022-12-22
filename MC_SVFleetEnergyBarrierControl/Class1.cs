@@ -17,12 +17,13 @@ namespace MC_SVFleetEnergyBarrierControl
     {
         public const string pluginGuid = "mc.starvalor.fleetenergybarriercontrol";
         public const string pluginName = "SV Fleet Energy Barrier Control";
-        public const string pluginVersion = "1.0.2";
+        public const string pluginVersion = "1.0.3";
 
         private const string modSaveFolder = "/MCSVSaveData/";  // /SaveData/ sub folder
         private const string modSaveFilePrefix = "FleeetEBCntrl_"; // modSaveFilePrefixNN.dat
         private const int defaultThreshold = 3; // 1 = 10%, 2 = 20% etc.
         private static PersistentData data = null;
+        private static GameObject emergencyWarpGO = null;
         private static GameObject energyBarrierGO = null;
         private static Dropdown energyBarrierDropdown = null;
 
@@ -49,7 +50,13 @@ namespace MC_SVFleetEnergyBarrierControl
         {
             if (energyBarrierGO == null)
             {
-                energyBarrierGO = Instantiate(___emergencyWarpGO);
+                if(___emergencyWarpGO != null)
+                    emergencyWarpGO = Instantiate(___emergencyWarpGO);
+                else
+                    return;
+
+                energyBarrierGO = Instantiate(emergencyWarpGO);
+
                 GameObject text = energyBarrierGO.transform.Find("Text").gameObject;
                 text.GetComponentInChildren<Text>().text = "Activate Energy Barrier when HP below";
 
@@ -96,6 +103,9 @@ namespace MC_SVFleetEnergyBarrierControl
         {
             if (data == null)
                 data = new PersistentData();
+
+            if (energyBarrierGO == null)
+                return;
 
             if (data.thresholds.Count != CountPlayerFleetMemebers())
             {                
