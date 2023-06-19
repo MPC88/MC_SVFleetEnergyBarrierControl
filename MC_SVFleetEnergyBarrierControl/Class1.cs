@@ -17,7 +17,7 @@ namespace MC_SVFleetEnergyBarrierControl
     {
         public const string pluginGuid = "mc.starvalor.fleetenergybarriercontrol";
         public const string pluginName = "SV Fleet Energy Barrier Control";
-        public const string pluginVersion = "1.0.3";
+        public const string pluginVersion = "1.0.4";
 
         private const string modSaveFolder = "/MCSVSaveData/";  // /SaveData/ sub folder
         private const string modSaveFilePrefix = "FleeetEBCntrl_"; // modSaveFilePrefixNN.dat
@@ -109,12 +109,8 @@ namespace MC_SVFleetEnergyBarrierControl
             if (data == null)
                 data = new PersistentData();
 
-            if (energyBarrierGO == null)
-            {
-                bool created = CreateEmergencyWarpGO(__instance, ___emergencyWarpGO);
-                if (!created)
-                    return;
-            }
+            if (energyBarrierGO == null && !CreateEmergencyWarpGO(__instance, ___emergencyWarpGO))
+                return;
             
             if (data.thresholds.Count != CountPlayerFleetMemebers())
             {                
@@ -126,9 +122,8 @@ namespace MC_SVFleetEnergyBarrierControl
 
             if (___aiMercChar != null && ___aiMercChar is PlayerFleetMember)
             {
-                int curThreshold = 0;
                 int crewID = (___aiMercChar as PlayerFleetMember).crewMemberID;
-                bool gotValue = data.thresholds.TryGetValue(crewID, out curThreshold);
+                bool gotValue = data.thresholds.TryGetValue(crewID, out int curThreshold);
 
                 if (!gotValue)
                 {
@@ -152,7 +147,6 @@ namespace MC_SVFleetEnergyBarrierControl
                 energyBarrierGO.transform.Find("Text").GetComponentInChildren<Text>().color = ColorSys.colDarkGray;
                 energyBarrierGO.SetActive(false);
                 energyBarrierDropdown.enabled = false;
-                energyBarrierDropdown.value = defaultThreshold;
             }
         }
 
